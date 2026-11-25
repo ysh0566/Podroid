@@ -344,6 +344,20 @@ RUN cp /opt/qemu-out/bin/qemu-system-aarch64 /opt/qemu-out/libqemu-system-aarch6
     && patchelf --set-soname libslirp.so /opt/qemu-out/libslirp.so \
     && patchelf --replace-needed libslirp.so.0 libslirp.so /opt/qemu-out/libqemu-system-aarch64.so
 
+
+# CI exports components independently so expensive kernel and QEMU builds can
+# run in separate jobs without rebuilding each other.
+FROM scratch AS ci-initramfs
+COPY --from=packer /output/ /
+
+FROM scratch AS ci-qemu
+COPY --from=qemu-builder /opt/qemu-out/libqemu-system-aarch64.so /libqemu-system-aarch64.so
+COPY --from=qemu-builder /opt/qemu-out/libslirp.so /libslirp.so
+COPY --from=qemu-builder /opt/qemu-out/libpodroid-bridge.so /libpodroid-bridge.so
+COPY --from=qemu-builder /opt/qemu-out/libpodroid-launcher.so /libpodroid-launcher.so
+COPY --from=qemu-builder /opt/qemu-out/share/qemu/efi-virtio.rom /qemu/efi-virtio.rom
+COPY --from=qemu-builder /opt/qemu-out/share/qemu/keymaps/ /qemu/keymaps/
+
 # ==============================================================================
 # SECTION 3: Final Artifacts Stage
 # ==============================================================================

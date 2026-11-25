@@ -1,0 +1,162 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+    tags: ['**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: apk-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type == 'branch' }}
+
+jobs:
+  metadata:
+    if: github.event_name != 'push' || !github.event.deleted
+    runs-on: ubuntu-24.04
+    outputs:
+      kernel: ${{ steps.meta.outputs.kernel }}
+      qemu: ${{ steps.meta.outputs.qemu }}
+      uml: ${{ steps.meta.outputs.uml }}
+      system_version: ${{ steps.meta.outputs.system_version }}
+      version_code: ${{ steps.meta.outputs.version_code }}
+      version_name: ${{ steps.meta.outputs.version_name }}
+      artifact: ${{ steps.meta.outputs.artifact }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Validate build metadata
+        run: python3 -m unittest discover -s scripts/ci -p 'test_*.py'
+      - id: meta
+        run: python3 scripts/ci/metadata.py
+
+  native:
+    needs: metadata
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - component: initramfs
+            context: .
+            file: Dockerfile
+            target: ci-initramfs
+          - component: qemu
+            context: .
+            file: Dockerfile
+            target: ci-qemu
+          - component: rootfs
+            context: build-rootfs
+            file: build-rootfs/Dockerfile.rootfs
+            target: export
+          - component: uml
+            context: build-uml
+            file: build-uml/Dockerfile.uml
+            target: artifacts
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Stage guest documentation
+        if: matrix.component == 'rootfs'
+        run: |
+          mkdir -p build-rootfs/docs-guide
+          cp docs/guide/*.html docs/guide/style.css build-rootfs/docs-guide/
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
+        with:
+          platforms: arm64
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build native component from source
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          build-contexts: repo=.
+          build-args: |
+            KERNEL_VERSION=${{ needs.metadata.outputs.kernel }}
+            QEMU_VERSION=${{ needs.metadata.outputs.qemu }}
+            UML_COMMIT=${{ needs.metadata.outputs.uml }}
+            SYSTEM_VERSION=${{ needs.metadata.outputs.system_version }}
+          outputs: type=local,dest=build/ci/native
+          cache-from: type=gha,scope=native-${{ matrix.component }}
+          cache-to: type=gha,scope=native-${{ matrix.component }},mode=max
+          provenance: false
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: native-${{ matrix.component }}
+          path: build/ci/native/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 3
+
+  apk:
+    needs: [metadata, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      PODROID_APPLICATION_ID: ${{ vars.PODROID_APPLICATION_ID || 'com.ysh0566.podroid' }}
+      PODROID_VERSION_CODE: ${{ needs.metadata.outputs.version_code }}
+      PODROID_VERSION_NAME: ${{ needs.metadata.outputs.version_name }}
+      PODROID_NDK_VERSION: '27.2.12479018'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+      - name: Install Android toolchain
+        run: sdkmanager 'platforms;android-36' 'platforms;android-36.1' 'build-tools;36.0.0' "ndk;$PODROID_NDK_VERSION"
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: native-*
+          merge-multiple: true
+          path: build/ci/native
+      - name: Collect native runtime
+        run: bash scripts/ci/collect-native.sh build/ci/native
+      - name: Run unit tests
+        run: ./gradlew --no-daemon --no-configuration-cache --init-script scripts/ci/build.init.gradle :app:testDebugUnitTest
+      - name: Assemble release APK
+        env:
+          KEYSTORE_BASE64: ${{ secrets.PODROID_KEYSTORE_BASE64 }}
+          ORG_GRADLE_PROJECT_PODROID_RELEASE_STORE_PASSWORD: ${{ secrets.PODROID_STORE_PASSWORD }}
+          ORG_GRADLE_PROJECT_PODROID_RELEASE_KEY_ALIAS: ${{ secrets.PODROID_KEY_ALIAS }}
+          ORG_GRADLE_PROJECT_PODROID_RELEASE_KEY_PASSWORD: ${{ secrets.PODROID_KEY_PASSWORD }}
+          EXPECTED_CERT_SHA256: ${{ vars.PODROID_SIGNING_CERT_SHA256 }}
+        run: bash scripts/ci/package-apk.sh
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ needs.metadata.outputs.artifact }}
+          path: build/ci/dist/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload corresponding UML source
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ needs.metadata.outputs.artifact }}-uml-source
+          path: out/uml-source-*.tar.zst
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ needs.metadata.outputs.artifact }}-tests
+          path: |
+            app/build/reports/tests/testDebugUnitTest/
+            app/build/test-results/testDebugUnitTest/
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Remove signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/podroid-ci-signing.jks"

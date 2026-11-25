@@ -86,3 +86,6 @@ app/src/debug/jniLibs/
 
 # Local UML research notes, logs and benchmarks
 /research/
+
+# CI Python helper bytecode
+/scripts/ci/__pycache__/

@@ -1,0 +1,16 @@
+// Keep CI identity/toolchain overrides out of developers' normal build variants.
+allprojects {
+    afterEvaluate { p ->
+        if (p.hasProperty('android')) {
+            p.android.ndkVersion = System.getenv('PODROID_NDK_VERSION') ?: '27.2.12479018'
+        }
+        if (p.path == ':app') {
+            def appId = System.getenv('PODROID_APPLICATION_ID')
+            def code = System.getenv('PODROID_VERSION_CODE')
+            def name = System.getenv('PODROID_VERSION_NAME')
+            if (appId) p.android.defaultConfig.applicationId = appId
+            if (code) p.android.defaultConfig.versionCode = Integer.parseInt(code)
+            if (name) p.android.defaultConfig.versionName = name
+        }
+    }
+}

@@ -99,3 +99,11 @@ Full list in [CREDITS.md](CREDITS.md).
 ## License
 
 [GPLv2](LICENSE). If Podroid is useful to you, a [star](https://github.com/ExTV/Podroid/stargazers) helps other people find it.
+
+## Automated APK builds
+
+[Build Android APK](https://github.com/ysh0566/Podroid/actions/workflows/build-apk.yml) runs on every push to
+`main`, every pushed tag, and manual dispatch. It builds the native runtime from
+source and uploads the APK, SHA-256 checksum, build metadata and corresponding
+UML source as Actions artifacts. See [CI packaging](docs/ci-packaging.md) for
+artifact names, signing setup and update compatibility.

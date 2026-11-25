@@ -314,3 +314,7 @@ Reading the VM console depends on build type: `run-as` works on debug, but **rel
 ```bash
 adb shell run-as com.excp.podroid.debug cat files/console.log   # debug only
 ```
+
+### GitHub Actions packaging
+
+`.github/workflows/build-apk.yml` builds APKs on main/tag pushes and manual dispatch. Four cached Docker export jobs feed a unit-test/release-assembly job. `ci-initramfs` and `ci-qemu` are export-only Docker targets; `final` remains the default target. CI identity, version and NDK are overridden by `scripts/ci/build.init.gradle`, leaving ordinary local builds unchanged. APK version codes use a monotonic workflow run counter, while rootfs SYSTEM_VERSION retains the source version for migration ordering. Missing signing secrets produce an explicitly unsigned APK; configured signing requires an expected certificate fingerprint and never falls back to an ephemeral debug key. See `docs/ci-packaging.md` for settings, artifacts and limitations. No workflow installs onto a tablet.
