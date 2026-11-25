@@ -95,13 +95,19 @@ fun NetworkRelaySettings(viewModel: HostServicesViewModel = hiltViewModel()) {
     var showDialog by rememberSaveable { mutableStateOf(false) }
     PodroidListRow(
         label = stringResource(R.string.relay_title),
-        value = stringResource(if (config.enabled) R.string.on else R.string.off),
+        value = stringResource(proxyModeLabel(config)),
         trailing = "›",
         onClick = { showDialog = true },
     )
     if (showDialog) {
         NetworkRelayDialog(config, viewModel, onDismiss = { showDialog = false })
     }
+}
+
+private fun proxyModeLabel(config: RelayConfig) = when {
+    !config.enabled -> R.string.off
+    config.global -> R.string.proxy_global
+    else -> R.string.proxy_apps
 }
 
 @Composable
@@ -120,9 +126,11 @@ private fun NetworkRelayDialog(
     var noProxy by rememberSaveable(config.noProxy) { mutableStateOf(config.noProxy) }
     var connectionLimit by rememberSaveable(config.connectionLimit) { mutableStateOf(config.connectionLimit) }
     var showLimits by remember { mutableStateOf(false) }
-    val candidate = RelayConfig(config.enabled, host.trim(), port.toIntOrNull() ?: 0, noProxy, connectionLimit)
+    var showModes by remember { mutableStateOf(false) }
+    var showProtocols by remember { mutableStateOf(false) }
+    val candidate = config.copy(host = host.trim(), port = port.toIntOrNull() ?: 0, noProxy = noProxy, connectionLimit = connectionLimit)
     LaunchedEffect(candidate) { viewModel.resetProbe() }
-    LaunchedEffect(editable) { if (!editable) showLimits = false }
+    LaunchedEffect(editable) { if (!editable) { showLimits = false; showModes = false; showProtocols = false } }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.relay_title)) },
@@ -131,26 +139,46 @@ private fun NetworkRelayDialog(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(PodroidTokens.Spacing.SM),
             ) {
-                PodroidListRow(
-                    label = stringResource(R.string.proxy_use),
-                    onClick = { if (editable) viewModel.save(config.copy(enabled = !config.enabled)) },
-                    rightSlot = {
-                        PodroidSwitch(
-                            checked = config.enabled,
-                            enabled = editable,
-                            onCheckedChange = { viewModel.save(config.copy(enabled = it)) },
-                        )
-                    },
-                )
-                ProxyHint(stringResource(R.string.relay_description))
+                Box {
+                    PodroidListRow(label = stringResource(R.string.proxy_mode),
+                        value = stringResource(proxyModeLabel(config)), trailing = "›",
+                        onClick = if (editable) ({ showModes = true }) else null)
+                    DropdownMenu(expanded = showModes && editable, onDismissRequest = { showModes = false }) {
+                        listOf(R.string.off, R.string.proxy_apps, R.string.proxy_global).forEachIndexed { index, label ->
+                            DropdownMenuItem(text = { Text(stringResource(label)) }, onClick = {
+                                // A mode switch is immediate; keep uncommitted text edits out of it.
+                                viewModel.save(config.copy(enabled = index != 0, global = index == 2,
+                                    protocol = if (index == 1) ProxyProtocol.HTTP else config.protocol))
+                                showModes = false
+                            })
+                        }
+                    }
+                }
+                ProxyHint(stringResource(if (config.global) R.string.proxy_global_hint else R.string.relay_description))
                 if (!vmStopped) {
                     ProxyHint(stringResource(R.string.stop_vm_to_change))
                 }
                 if (config.enabled) {
-                    PodroidListRow(
-                        label = stringResource(R.string.proxy_type),
-                        value = stringResource(R.string.proxy_http),
-                    )
+                    Box {
+                        PodroidListRow(label = stringResource(R.string.proxy_type),
+                            value = config.protocol.name, trailing = if (config.global) "›" else null,
+                            onClick = if (editable && config.global) ({ showProtocols = true }) else null)
+                        DropdownMenu(expanded = showProtocols && editable, onDismissRequest = { showProtocols = false }) {
+                            ProxyProtocol.entries.forEach { protocol ->
+                                DropdownMenuItem(text = { Text(protocol.name) }, onClick = {
+                                    viewModel.save(config.copy(protocol = protocol)); showProtocols = false
+                                })
+                            }
+                        }
+                    }
+                    if (config.global) {
+                        ProxyHint(stringResource(if (config.protocol == ProxyProtocol.HTTP)
+                            R.string.proxy_http_global_hint else R.string.proxy_socks_global_hint))
+                        PodroidListRow(label = stringResource(R.string.proxy_lan), rightSlot = {
+                            PodroidSwitch(checked = config.bypassLan, enabled = editable,
+                                onCheckedChange = { viewModel.save(config.copy(bypassLan = it)) })
+                        })
+                    }
                     Box {
                         PodroidListRow(
                             label = stringResource(R.string.proxy_connection_limit),
@@ -190,7 +218,7 @@ private fun NetworkRelayDialog(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    OutlinedTextField(
+                    if (!config.global) OutlinedTextField(
                         value = noProxy,
                         onValueChange = { noProxy = it },
                         enabled = editable,

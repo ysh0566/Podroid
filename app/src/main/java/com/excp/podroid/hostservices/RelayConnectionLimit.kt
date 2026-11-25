@@ -15,21 +15,24 @@ internal data class RelayResources(
     val openDescriptors: Int?,
 )
 
-internal fun relayConnectionLimit(requested: Int, resources: RelayResources): Int {
+internal fun relayConnectionLimit(requested: Int, resources: RelayResources, udp: Boolean = false): Int {
     require(requested in RELAY_CONNECTION_OPTIONS)
     val ceiling = if (requested == AUTO_RELAY_CONNECTIONS) 1024 else requested
     val maxHeap = resources.maxHeap.coerceAtLeast(0)
     val headroom = maxHeap - resources.usedHeap.coerceIn(0, maxHeap)
     // Budget twice the 32 KiB payload buffers for Java bookkeeping. Leave at least
     // 7/8 of the heap ceiling and 3/4 of current headroom to the rest of the app.
-    val memorySlots = minOf(maxHeap / 8, headroom / 4) / (4L * TcpRelay.BUFFER_BYTES)
+    // A UDP slot owns a guest TCP socket, upstream control and UDP socket,
+    // plus two full datagram buffers. Budget the worst case for shared admission.
+    val slotBytes = if (udp) 256L * 1024 else 4L * TcpRelay.BUFFER_BYTES
+    val memorySlots = minOf(maxHeap / 8, headroom / 4) / slotBytes
     val descriptorSlots = if (resources.descriptorLimit != null && resources.openDescriptors != null) {
         val softLimit = resources.descriptorLimit.coerceAtLeast(0)
         // Two sockets per tunnel; reserve descriptors for VM/display/audio and
         // eight more for the selector, listener and a concurrent health probe.
         val reserve = maxOf(256L, softLimit / 4)
         (softLimit - resources.openDescriptors.coerceAtLeast(0) - reserve - 8)
-            .coerceAtLeast(0) / 2
+            .coerceAtLeast(0) / (if (udp) 3 else 2)
     } else {
         // Procfs can be restricted. Do not assume a large capacity without evidence.
         128L

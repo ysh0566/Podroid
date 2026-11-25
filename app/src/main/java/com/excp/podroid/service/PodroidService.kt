@@ -441,7 +441,7 @@ class PodroidService : Service() {
                         qemuExtraArgs = settingsRepository.getQemuExtraArgsSnapshot(),
                         kernelExtraCmdline = com.excp.podroid.hostservices.hostServiceCmdline(
                             settingsRepository.getKernelExtraCmdlineSnapshot(), relayConfig.enabled, microphoneSession.prepare(),
-                            relayConfig.noProxy,
+                            relayConfig.noProxy, relayConfig.global, relayConfig.protocol, relayConfig.bypassLan,
                         ),
                         verboseLogging = settingsRepository.getAvfVerboseLoggingSnapshot(),
                         x11Dpi = settingsRepository.getX11DpiSnapshot(),

@@ -27,6 +27,20 @@ RUN curl -L -o minirootfs.tar.gz \
  && tar -xzf minirootfs.tar.gz -C rootfs \
  && rm minirootfs.tar.gz
 
+# Pinned upstream release; verify the archive before adding executable code.
+# Source and license: https://github.com/SagerNet/sing-box/tree/v1.14.4
+ARG SING_BOX_VERSION=1.14.4
+ARG SING_BOX_SHA256=b95e25f921dc5e17a4cf13327243d1177642c7e35425bf5372862c477c359f56
+RUN test "$ALPINE_ARCH" = aarch64 \
+ && curl -fL --retry 3 -o /work/sing-box.tar.gz \
+    "https://github.com/SagerNet/sing-box/releases/download/v${SING_BOX_VERSION}/sing-box-${SING_BOX_VERSION}-linux-arm64-musl.tar.gz" \
+ && echo "${SING_BOX_SHA256}  /work/sing-box.tar.gz" | sha256sum -c - \
+ && tar -xzf /work/sing-box.tar.gz -C /work \
+ && mkdir -p /work/rootfs/usr/local/bin /work/rootfs/usr/share/licenses/sing-box \
+ && cp /work/sing-box-${SING_BOX_VERSION}-linux-arm64-musl/sing-box /work/rootfs/usr/local/bin/ \
+ && cp /work/sing-box-${SING_BOX_VERSION}-linux-arm64-musl/LICENSE /work/rootfs/usr/share/licenses/sing-box/ \
+ && rm -rf /work/sing-box.tar.gz /work/sing-box-${SING_BOX_VERSION}-linux-arm64-musl
+
 # Pull in the vsock-agent binary built in stage 1.
 COPY --from=vsock-builder /work/vsock-agent/podroid-vsock-agent /work/rootfs/usr/local/bin/podroid-vsock-agent
 COPY --from=vsock-builder /work/host-bridge/podroid-hostd /work/rootfs/usr/local/bin/podroid-hostd

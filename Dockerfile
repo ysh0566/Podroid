@@ -33,6 +33,17 @@ RUN printf '%s\n' \
     'CONFIG_LLC=y' \
     'CONFIG_VETH=y' \
     'CONFIG_TUN=y' \
+    'CONFIG_IP_ADVANCED_ROUTER=y' \
+    'CONFIG_IP_MULTIPLE_TABLES=y' \
+    'CONFIG_IPV6_MULTIPLE_TABLES=y' \
+    'CONFIG_NFT_FIB_INET=y' \
+    'CONFIG_NFT_REJECT=y' \
+    'CONFIG_NFT_REJECT_INET=y' \
+    'CONFIG_NFT_REJECT_IPV4=y' \
+    'CONFIG_NFT_REJECT_IPV6=y' \
+    'CONFIG_NETFILTER_NETLINK_QUEUE=y' \
+    'CONFIG_NFT_QUEUE=y' \
+    'CONFIG_NF_CONNTRACK_MARK=y' \
     'CONFIG_DUMMY=y' \
     'CONFIG_NETFILTER=y' \
     'CONFIG_NETFILTER_ADVANCED=y' \
@@ -184,6 +195,11 @@ RUN cd /modules/lib/modules/*/kernel \
     && find . -name '*.ko' | grep -vE '(^\./net/(bridge|netfilter|9p|ipv4/netfilter|ipv6/netfilter)/|^\./fs/(9p|fuse|overlayfs)/|^\./drivers/net/(tun|veth|virtio_net)\.ko|^\./drivers/block/virtio_blk\.ko|^\./drivers/char/hw_random/virtio-rng\.ko|^\./drivers/virtio/)' \
     | xargs rm -f \
     && find . -type d -empty -delete
+
+# Do not ship a global proxy kernel whose policy-routing/netfilter options
+# were silently demoted by Kconfig dependencies.
+RUN cd linux-${KERNEL_VERSION} && for opt in IP_MULTIPLE_TABLES IPV6_MULTIPLE_TABLES NFT_REJECT_INET NFT_QUEUE NF_CONNTRACK_MARK; do \
+    grep -q "^CONFIG_${opt}=y$" .config || { echo "Missing global proxy option: $opt"; exit 1; }; done
 
 RUN mkdir -p /output \
     && cp linux-${KERNEL_VERSION}/arch/arm64/boot/Image.gz /output/vmlinuz-virt

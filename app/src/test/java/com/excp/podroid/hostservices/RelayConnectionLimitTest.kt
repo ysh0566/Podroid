@@ -56,4 +56,9 @@ class RelayConnectionLimitTest {
         assertNull(parseDescriptorLimit("Max open files            -1                   65536                files\n"))
         assertNull(parseDescriptorLimit("Max open files            invalid"))
     }
+    @Test fun `UDP admission budgets full datagrams and three descriptors`() {
+        val resources = RelayResources(256L * 1024 * 1024, 0, 4096L, 50)
+        assertEquals(128, relayConnectionLimit(1024, resources, udp = true))
+        assertEquals(512, relayConnectionLimit(1024, resources))
+    }
 }

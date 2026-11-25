@@ -1,0 +1,28 @@
+#!/sbin/openrc-run
+description="Podroid global proxy"
+command=/usr/local/bin/sing-box
+command_args="run -c /run/podroid-host-services/global.json"
+supervisor=supervise-daemon
+respawn_delay=2
+respawn_max=0
+output_log=/var/log/podroid-global-proxy.log
+error_log=/var/log/podroid-global-proxy.log
+depend() {
+    need podroid-network
+    need podroid-proxy
+    if grep -q 'podroid.proxy_mode=global' /proc/cmdline && grep -q 'podroid.proxy_type=socks5' /proc/cmdline; then
+        need podroid-socks-bridge
+    fi
+    before docker podroid-ready
+}
+start_pre() {
+    node /usr/local/share/podroid-host-services/global-proxy.js
+}
+start() {
+    grep -q 'podroid.proxy_mode=global' /proc/cmdline || return 0
+    default_start
+}
+stop() {
+    grep -q 'podroid.proxy_mode=global' /proc/cmdline || return 0
+    default_stop
+}

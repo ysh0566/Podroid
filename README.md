@@ -36,6 +36,7 @@ A real Alpine Linux VM with its own kernel - not a chroot or proot trick - so **
 - **X11 desktop** - run GUI Linux apps in a built-in viewer with touch, keyboard, mouse and audio; a single, locally drawn desktop cursor follows input without waiting for framebuffer updates
 - **Touchpad scrolling** - choose **Natural** (default) or **Traditional** under the X11 viewer's **Settings → Touchpad scroll direction**. Natural scrolling moves down the page when you swipe up with two fingers; Traditional reverses it. Changes apply immediately and are saved for the next launch.
 - **USB passthrough**, **SSH**, **port forwarding** and a **guest-to-Android bridge**
+- **Network proxy** - with the VM stopped, choose **Settings → Network proxy → Mode**: Off, App proxy, or Global proxy. Global mode routes VM apps and containers through HTTP (TCP and DNS) or SOCKS5 (also UDP when supported), with optional LAN access and blocking of direct Internet traffic on failure. See the [configuration and validation report](docs/testing/global-proxy.md).
 - **Container backup**, a **live VM/device status view** and **Downloads-folder sharing** with the guest
 - **English and 中文**, no root, any arm64 device on Android 8+
 

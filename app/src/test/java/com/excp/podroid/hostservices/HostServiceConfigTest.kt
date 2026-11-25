@@ -61,4 +61,16 @@ class HostServiceConfigTest {
         assertFalse(command.contains("=old"))
         assertFalse(hostServiceCmdline("podroid.no_proxy=old", false).contains("no_proxy="))
     }
+    @Test fun `global proxy flags and transport are validated independently of app proxy`() {
+        assertFalse(RelayConfig(enabled = true, protocol = ProxyProtocol.SOCKS5).isValid())
+        assertTrue(RelayConfig(enabled = true, global = true, protocol = ProxyProtocol.SOCKS5).isValid())
+        assertFalse(RelayConfig(port = UDP_RELAY_PORT).isValid())
+        val flags = hostServiceCmdline("podroid.proxy_mode=old podroid.proxy_type=bad podroid.proxy_lan=1", true,
+            global = true, protocol = ProxyProtocol.SOCKS5)
+        assertTrue(flags.contains("podroid.proxy_mode=global"))
+        assertTrue(flags.contains("podroid.proxy_type=socks5"))
+        assertTrue(flags.contains("podroid.proxy_lan=0"))
+        assertFalse(flags.contains("=old"))
+        assertFalse(hostServiceCmdline(flags, false).contains("proxy_mode="))
+    }
 }

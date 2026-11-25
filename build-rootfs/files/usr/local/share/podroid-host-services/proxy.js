@@ -68,6 +68,13 @@ function configure(root, proxy) {
 if (require.main === module) {
     const cmdline = fs.readFileSync('/proc/cmdline', 'utf8');
     const route = execFileSync('/sbin/ip', ['-4', 'route', 'show', 'default'], {encoding:'utf8'});
-    configure('', proxySettings(cmdline, route.match(/^default via (\S+)/m)?.[1]));
+    const global = require('./global-config').options(cmdline).global;
+    if (global) {
+        // Keep ownership bookkeeping, but remove environment-level proxying to
+        // avoid proxying twice (and HTTP variables pointing at a SOCKS listener).
+        configure('', {httpProxy:'', httpsProxy:'', noProxy:''});
+        fs.writeFileSync('/run/podroid-host-services/proxy.env',
+            'unset http_proxy https_proxy HTTP_PROXY HTTPS_PROXY all_proxy ALL_PROXY no_proxy NO_PROXY\n');
+    } else configure('', proxySettings(cmdline, route.match(/^default via (\S+)/m)?.[1]));
 }
 module.exports = {proxySettings, configure};

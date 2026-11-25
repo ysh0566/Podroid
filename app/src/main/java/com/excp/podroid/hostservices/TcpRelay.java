@@ -27,6 +27,7 @@ public final class TcpRelay implements Closeable {
     private final int prefix;
     private final InetSocketAddress upstream;
     private final int limit;
+    private final RelayBudget budget;
     private final int boundPort;
     private final Thread worker;
     private final Set<Session> sessions = new HashSet<>();
@@ -39,6 +40,12 @@ public final class TcpRelay implements Closeable {
     private volatile String failure = "";
 
     public TcpRelay(InetAddress address, int prefix, int port, InetSocketAddress upstream, int limit) throws IOException {
+        this(address, prefix, port, upstream, new RelayBudget(limit));
+    }
+
+    TcpRelay(InetAddress address, int prefix, int port, InetSocketAddress upstream, RelayBudget budget) throws IOException {
+        int limit = budget.limit;
+        this.budget = budget;
         if (address.getAddress().length != 4 || prefix < 1 || prefix > 32 || limit < 1 || upstream.isUnresolved())
             throw new IllegalArgumentException("Resolved IPv4 binding, upstream and positive limit required");
         this.address = address;
@@ -117,7 +124,7 @@ public final class TcpRelay implements Closeable {
         for (int i = 0; i < 64 && !closed; i++) {
             SocketChannel client = listener.accept();
             if (client == null) return;
-            if (!sameSubnet(address, client.socket().getInetAddress(), prefix) || active >= limit) {
+            if (!sameSubnet(address, client.socket().getInetAddress(), prefix) || !budget.acquire()) {
                 rejected.incrementAndGet();
                 closeQuietly(client);
                 continue;
@@ -140,7 +147,8 @@ public final class TcpRelay implements Closeable {
                 refresh(session);
             } catch (IOException e) {
                 connectFailures.incrementAndGet();
-                if (session != null) closeSession(session);
+                if (session != null && sessions.contains(session)) closeSession(session);
+                else budget.release();
                 closeQuietly(client);
                 if (destination != null) closeQuietly(destination);
             }
@@ -186,7 +194,7 @@ public final class TcpRelay implements Closeable {
         if (session.right.key != null) session.right.key.cancel();
         closeQuietly(session.left.channel);
         closeQuietly(session.right.channel);
-        sessions.remove(session);
+        if (sessions.remove(session)) budget.release();
         active = sessions.size();
     }
 

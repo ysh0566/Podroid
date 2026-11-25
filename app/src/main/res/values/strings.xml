@@ -433,4 +433,11 @@
     <string name="proxy_success">HTTPS connection OK.</string>
     <string name="proxy_connection_limit">Connection limit</string>
     <string name="proxy_connection_limit_hint">Available resources may lower the limit.</string>
+    <string name="proxy_mode">Mode</string>
+    <string name="proxy_apps">App proxy</string>
+    <string name="proxy_global">Global proxy</string>
+    <string name="proxy_global_hint">All VM apps and containers. Blocks direct Internet access on failure. Applies on restart.</string>
+    <string name="proxy_http_global_hint">TCP and DNS. Other UDP is blocked.</string>
+    <string name="proxy_socks_global_hint">TCP, DNS and UDP. Requires upstream UDP support.</string>
+    <string name="proxy_lan">Direct LAN access</string>
 </resources>

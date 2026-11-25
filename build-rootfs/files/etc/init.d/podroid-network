@@ -87,6 +87,14 @@ depend() {
 start() {
     ebegin "Configuring network..."
     echo "Configuring containers..." > /dev/console
+    # Install the global-mode egress guard before DHCP or any application can
+    # use the NIC. Failure keeps networking down instead of silently going direct.
+    if grep -q 'podroid.proxy_mode=global' /proc/cmdline; then
+        if ! node /usr/local/share/podroid-host-services/global-proxy.js --guard; then
+            eend 1 "global proxy guard failed"
+            return 1
+        fi
+    fi
     ip link set lo up 2>/dev/null
     NETIF=""
     if grep -q 'podroid\.backend=uml' /proc/cmdline 2>/dev/null; then
