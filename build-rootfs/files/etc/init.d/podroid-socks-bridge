@@ -1,0 +1,13 @@
+#!/sbin/openrc-run
+description="Podroid SOCKS UDP transport"
+command=/usr/bin/node
+command_args=/usr/local/share/podroid-host-services/socks-bridge.js
+supervisor=supervise-daemon
+respawn_delay=2
+respawn_max=0
+output_log=/var/log/podroid-socks-bridge.log
+error_log=/var/log/podroid-socks-bridge.log
+depend() {
+    need podroid-network
+    before podroid-global-proxy
+}

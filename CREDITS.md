@@ -160,3 +160,7 @@ If you have contributed code, themes, fonts, or bug reports and would like to be
 ## Reporting missing or incorrect attribution
 
 We take attribution seriously. If you believe your work is shipped in Podroid but not properly credited, or if any information above is incorrect, please [open an issue](https://github.com/ExTV/Podroid/issues/new) and we will get it fixed quickly.
+
+## Global proxy
+
+- [sing-box](https://github.com/SagerNet/sing-box), v1.14.4, by SagerNet/nekohasekai. Used unmodified as a guest executable under GPL-3.0-or-later with its naming notice. [Pinned source](https://github.com/SagerNet/sing-box/tree/v1.14.4); license is included in `/usr/share/licenses/sing-box/LICENSE` in the guest.

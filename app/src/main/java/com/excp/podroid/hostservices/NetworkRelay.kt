@@ -28,12 +28,15 @@ class NetworkRelay @Inject constructor() {
     private val lock = Any()
     private var generation = 0L
     private var relay: TcpRelay? = null
+    private var udpRelay: UdpRelay? = null
     private val mutableState = MutableStateFlow(RelayState())
     val state = mutableState.asStateFlow()
 
     fun stop() = synchronized(lock) {
         generation++
         relay?.close()
+        udpRelay?.close()
+        udpRelay = null
         relay = null
         mutableState.value = RelayState()
     }
@@ -50,15 +53,17 @@ class NetworkRelay @Inject constructor() {
         // Called under lock. Counters span listener rebinds within this VM session.
         fun retire() {
             relay?.let { it.close(); retiredBytes += it.bytes(); retiredRejected += it.rejectedConnections() }
+            udpRelay?.let { it.close(); retiredBytes += it.bytes(); retiredRejected += it.rejectedConnections() }
+            udpRelay = null
             relay = null
             binding = null
             destination = null
             effectiveLimit = 0
         }
         fun publish(phase: RelayPhase) {
-            mutableState.value = RelayState(phase, relay?.connections() ?: 0,
-                retiredBytes + (relay?.bytes() ?: 0), effectiveLimit,
-                retiredRejected + (relay?.rejectedConnections() ?: 0))
+            mutableState.value = RelayState(phase, (relay?.connections() ?: 0) + (udpRelay?.connections() ?: 0),
+                retiredBytes + (relay?.bytes() ?: 0) + (udpRelay?.bytes() ?: 0), effectiveLimit,
+                retiredRejected + (relay?.rejectedConnections() ?: 0) + (udpRelay?.rejectedConnections() ?: 0))
         }
         try {
             while (currentCoroutineContext().isActive) {
@@ -77,13 +82,21 @@ class NetworkRelay @Inject constructor() {
                         check(!upstream.isUnresolved)
                         synchronized(lock) {
                             if (token != generation) return@withContext
-                            if (binding != network || destination != upstream || relay == null || relay!!.failure().isNotEmpty()) {
+                            if (binding != network || destination != upstream || relay == null || relay!!.failure().isNotEmpty() || udpRelay?.failure()?.isNotEmpty() == true) {
                                 retire()
                                 phase = RelayPhase.FAILED
                                 // Sample after retiring the old sockets. Keep this cap stable until rebind.
-                                effectiveLimit = relayConnectionLimit(config.connectionLimit, readRelayResources())
+                                val udp = config.global && config.protocol == ProxyProtocol.SOCKS5
+                                effectiveLimit = relayConnectionLimit(config.connectionLimit, readRelayResources(), udp)
                                 check(effectiveLimit > 0) { "No relay resource budget" }
-                                relay = TcpRelay(network.address, network.prefix, RELAY_PORT, upstream, effectiveLimit)
+                                val budget = RelayBudget(effectiveLimit)
+                                try {
+                                    relay = TcpRelay(network.address, network.prefix, RELAY_PORT, upstream, budget)
+                                    if (udp) udpRelay = UdpRelay(network.address, network.prefix, UDP_RELAY_PORT, upstream, budget)
+                                } catch (e: Exception) {
+                                    retire()
+                                    throw e
+                                }
                                 binding = network
                                 destination = upstream
                             }

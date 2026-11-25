@@ -20,16 +20,24 @@ suspend fun probeProxy(config: RelayConfig): ProxyProbeResult = withContext(Disp
         val destination = InetSocketAddress(config.host, config.port)
         Socket().use { it.connect(destination, 2000) }
         tcpConnected = true
-        connection = URL("https://example.com/").openConnection(Proxy(Proxy.Type.HTTP, destination)) as HttpsURLConnection
+        connection = URL("https://example.com/").openConnection(Proxy(if (config.protocol == ProxyProtocol.SOCKS5) Proxy.Type.SOCKS else Proxy.Type.HTTP, destination)) as HttpsURLConnection
         connection.connectTimeout = 5000
         connection.readTimeout = 5000
-        connection.requestMethod = "HEAD"
+        // Some upstream filters reject HEAD while the same HTTPS URL allows GET.
+        // Inspect headers only and close below; no response body is retained.
+        connection.requestMethod = "GET"
         connection.instanceFollowRedirects = false
-        // Keep normal TLS/hostname verification; a TCP accept alone proves no Internet access.
-        if (connection.responseCode in 200..399) ProxyProbeResult.SUCCESS else ProxyProbeResult.HTTPS_FAILED
+        // A verified TLS session plus an HTTP response proves connectivity even
+        // when the destination's WAF rejects the request (for example HTTP 403).
+        // CONNECT rejection and certificate/hostname failures still throw below.
+        val status = connection.responseCode
+        android.util.Log.i("PodroidProxyProbe", "HTTPS probe returned HTTP $status")
+        if (status in 100..599) ProxyProbeResult.SUCCESS else ProxyProbeResult.HTTPS_FAILED
     } catch (e: CancellationException) {
         throw e
-    } catch (_: Exception) {
+    } catch (error: Exception) {
+        // Keep connection-test failures actionable in exported diagnostics.
+        android.util.Log.w("PodroidProxyProbe", "HTTPS probe failed", error)
         if (tcpConnected) ProxyProbeResult.HTTPS_FAILED else ProxyProbeResult.UNREACHABLE
     } finally { connection?.disconnect() }
 }

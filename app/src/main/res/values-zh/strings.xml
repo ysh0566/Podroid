@@ -434,4 +434,11 @@
     <string name="proxy_success">HTTPS 连接正常。</string>
     <string name="proxy_connection_limit">连接上限</string>
     <string name="proxy_connection_limit_hint">资源不足时会降低实际上限。</string>
+    <string name="proxy_mode">模式</string>
+    <string name="proxy_apps">应用代理</string>
+    <string name="proxy_global">全局代理</string>
+    <string name="proxy_global_hint">接管 VM 应用和容器，故障时阻止直连。重启生效。</string>
+    <string name="proxy_http_global_hint">代理 TCP 和 DNS，其余 UDP 阻止。</string>
+    <string name="proxy_socks_global_hint">代理 TCP、DNS 和 UDP，需上游支持 UDP。</string>
+    <string name="proxy_lan">局域网直连</string>
 </resources>

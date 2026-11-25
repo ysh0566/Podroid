@@ -7,6 +7,9 @@ import java.net.NetworkInterface
 // Separate from the standalone helper so an existing installation keeps working.
 const val RELAY_PORT = 18888
 const val MICROPHONE_PORT = 18889
+const val UDP_RELAY_PORT = 18890
+
+enum class ProxyProtocol { HTTP, SOCKS5 }
 const val DEFAULT_NO_PROXY = "localhost,127.0.0.1,::1"
 
 data class RelayConfig(
@@ -15,11 +18,15 @@ data class RelayConfig(
     val port: Int = 8686,
     val noProxy: String = DEFAULT_NO_PROXY,
     val connectionLimit: Int = TcpRelay.CONNECTION_LIMIT,
+    val global: Boolean = false,
+    val protocol: ProxyProtocol = ProxyProtocol.HTTP,
+    val bypassLan: Boolean = false,
 ) {
     fun normalizedNoProxy(): String = noProxy.split(',').map { it.trim() }.filter { it.isNotEmpty() }.distinct().joinToString(",")
     fun isValid(): Boolean = connectionLimit in RELAY_CONNECTION_OPTIONS && port in 1..65535 && host.length in 1..253 &&
         host.matches(Regex("[A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?")) &&
-        port !in listOf(RELAY_PORT, MICROPHONE_PORT) && noProxy.length <= 512 &&
+        (!enabled || global || protocol == ProxyProtocol.HTTP) &&
+        port !in listOf(RELAY_PORT, MICROPHONE_PORT, UDP_RELAY_PORT) && noProxy.length <= 512 &&
         normalizedNoProxy().matches(Regex("[A-Za-z0-9.*:/,\\-]*"))
 }
 
@@ -38,17 +45,22 @@ fun guestNetwork(backend: String): GuestNetwork? = when (backend) {
     else -> null
 }
 
-fun hostServiceCmdline(extra: String, relayEnabled: Boolean, microphoneToken: String = "", noProxy: String = DEFAULT_NO_PROXY): String {
+fun hostServiceCmdline(extra: String, relayEnabled: Boolean, microphoneToken: String = "", noProxy: String = DEFAULT_NO_PROXY,
+    global: Boolean = false, protocol: ProxyProtocol = ProxyProtocol.HTTP, bypassLan: Boolean = false,
+): String {
     // These flags belong to the app. Remove stale user-supplied duplicates so
     // disabling the switch cannot leave a guest pointed at an absent relay.
     val cleaned = extra.split(Regex("\\s+")).filter {
         it.isNotEmpty() && !it.startsWith("podroid.proxy_port=") && !it.startsWith("podroid.no_proxy=") &&
-            !it.startsWith("podroid.mic_port=") && !it.startsWith("podroid.mic_token=")
+            !it.startsWith("podroid.proxy_mode=") && !it.startsWith("podroid.proxy_type=") &&
+            !it.startsWith("podroid.proxy_lan=") && !it.startsWith("podroid.mic_port=") && !it.startsWith("podroid.mic_token=")
     }
     val proxyConfig = RelayConfig(noProxy = noProxy)
     require(proxyConfig.isValid())
     return (cleaned + "podroid.proxy_port=${if (relayEnabled) RELAY_PORT else 0}" +
         "podroid.mic_port=$MICROPHONE_PORT" +
+        (if (relayEnabled && global) listOf("podroid.proxy_mode=global",
+            "podroid.proxy_type=${protocol.name.lowercase()}", "podroid.proxy_lan=${if (bypassLan) 1 else 0}") else emptyList()) +
         (if (relayEnabled) listOf("podroid.no_proxy=${proxyConfig.normalizedNoProxy().ifEmpty { "-" }}") else emptyList()) +
         listOfNotNull(microphoneToken.takeIf { it.matches(Regex("[0-9a-f]{64}")) }?.let { "podroid.mic_token=$it" })).joinToString(" ")
 }

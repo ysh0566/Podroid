@@ -104,7 +104,7 @@ mkdir -p "$ROOTFS/var/lib/containers/storage" \
 mkdir -p "$ROOTFS/usr/local/share/podroid-host-services" "$ROOTFS/etc/profile.d"
 cp /work/files/usr/local/share/podroid-host-services/* "$ROOTFS/usr/local/share/podroid-host-services/"
 cp /work/files/etc/profile.d/podroid-host-proxy.sh "$ROOTFS/etc/profile.d/"
-cp /work/files/etc/init.d/podroid-proxy "$ROOTFS/etc/init.d/"
+cp /work/files/etc/init.d/podroid-proxy /work/files/etc/init.d/podroid-global-proxy /work/files/etc/init.d/podroid-socks-bridge "$ROOTFS/etc/init.d/"
 cp /work/files/etc/init.d/podroid-audio /work/files/etc/init.d/podroid-audio-transport "$ROOTFS/etc/init.d/"
 mkdir -p "$ROOTFS/etc/pulse"
 cp /work/files/etc/pulse/podroid-audio.pa "$ROOTFS/etc/pulse/"
@@ -214,7 +214,7 @@ mkdir -p "$ROOTFS/etc/runlevels/default" "$ROOTFS/etc/runlevels/boot"
 # Guard each link: a dangling symlink (e.g. dnsmasq.lxcbr0, which lxc-bridge
 # may ship only as dnsmasq config and not an init script) makes OpenRC log
 # an error every boot and stalls podroid-ready's `after *` on a phantom.
-for svc in podroid-migrate podroid-bootstrap podroid-network podroid-proxy podroid-resize dropbear docker lxc dnsmasq.lxcbr0 podroid-audio podroid-audio-transport podroid-x11 podroid-vsock podroid-downloads podroid-hostd podroid-ready; do
+for svc in podroid-migrate podroid-bootstrap podroid-network podroid-proxy podroid-global-proxy podroid-resize dropbear docker lxc dnsmasq.lxcbr0 podroid-audio podroid-audio-transport podroid-x11 podroid-vsock podroid-downloads podroid-hostd podroid-ready; do
     if [ -e "$ROOTFS/etc/init.d/$svc" ]; then
         ln -sf "/etc/init.d/$svc" "$ROOTFS/etc/runlevels/default/$svc"
     else

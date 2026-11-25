@@ -48,6 +48,9 @@ class SettingsRepository @Inject constructor(
         val KEY_NETWORK_PROXY_HOST = stringPreferencesKey("network_proxy_host")
         val KEY_NETWORK_PROXY_PORT = intPreferencesKey("network_proxy_port")
         val KEY_NETWORK_NO_PROXY = stringPreferencesKey("network_no_proxy")
+        val KEY_NETWORK_GLOBAL = booleanPreferencesKey("network_global")
+        val KEY_NETWORK_PROTOCOL = stringPreferencesKey("network_protocol")
+        val KEY_NETWORK_BYPASS_LAN = booleanPreferencesKey("network_bypass_lan")
         val KEY_NETWORK_CONNECTION_LIMIT = intPreferencesKey("network_connection_limit")
         val KEY_DARK_THEME             = booleanPreferencesKey("dark_theme")
         val KEY_VM_RAM                 = intPreferencesKey("vm_ram_mb")
@@ -161,6 +164,10 @@ class SettingsRepository @Inject constructor(
             prefs[KEY_NETWORK_PROXY_PORT] ?: 8686,
             prefs[KEY_NETWORK_NO_PROXY] ?: com.excp.podroid.hostservices.DEFAULT_NO_PROXY,
             com.excp.podroid.hostservices.savedRelayConnectionLimit(prefs[KEY_NETWORK_CONNECTION_LIMIT]),
+            global = prefs[KEY_NETWORK_GLOBAL] ?: false,
+            protocol = com.excp.podroid.hostservices.ProxyProtocol.entries.firstOrNull { it.name == prefs[KEY_NETWORK_PROTOCOL] }
+                ?: com.excp.podroid.hostservices.ProxyProtocol.HTTP,
+            bypassLan = prefs[KEY_NETWORK_BYPASS_LAN] ?: false,
         ) }
 
     suspend fun setRelayConfig(value: com.excp.podroid.hostservices.RelayConfig) {
@@ -171,6 +178,9 @@ class SettingsRepository @Inject constructor(
             it[KEY_NETWORK_PROXY_PORT] = value.port
             it[KEY_NETWORK_NO_PROXY] = value.normalizedNoProxy()
             it[KEY_NETWORK_CONNECTION_LIMIT] = value.connectionLimit
+            it[KEY_NETWORK_GLOBAL] = value.global
+            it[KEY_NETWORK_PROTOCOL] = value.protocol.name
+            it[KEY_NETWORK_BYPASS_LAN] = value.bypassLan
         }
     }
 
