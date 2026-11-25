@@ -126,9 +126,13 @@ class PortForwardRepository @Inject constructor(
          * and filtered from reads here — the single chokepoint feeding the launch
          * snapshot, the EngineHolder live-diff, and the Settings UI — so a stale
          * rule persisted by an older build can never be surfaced or applied.
+         * The integrated relay and microphone also own their listener ports.
          * SSH (9922) is intentionally LAN-reachable and is NOT reserved.
          */
-        val RESERVED_HOST_PORTS = setOf(X11Constants.VNC_PORT, X11Constants.AUDIO_PORT)
+        val RESERVED_HOST_PORTS = setOf(
+            X11Constants.VNC_PORT, X11Constants.AUDIO_PORT,
+            com.excp.podroid.hostservices.RELAY_PORT, com.excp.podroid.hostservices.MICROPHONE_PORT,
+        )
     }
 
     val rules: Flow<List<PortForwardRule>> = context.dataStore.data

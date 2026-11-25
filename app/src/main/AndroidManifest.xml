@@ -16,6 +16,8 @@
 
     <!-- Network (SLIRP user networking, ttyd web terminal, QMP socket) -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <!-- Keep CPU awake while VM is running -->
@@ -159,6 +161,8 @@
             </intent-filter>
         </receiver>
 
+        <service android:name=".hostservices.MicrophoneService"
+            android:exported="false" android:foregroundServiceType="microphone" />
     </application>
 
 </manifest>

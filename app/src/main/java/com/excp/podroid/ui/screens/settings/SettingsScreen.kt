@@ -283,6 +283,7 @@ fun SettingsScreen(
                         )
                     },
                 )
+                com.excp.podroid.ui.components.hostservices.NetworkRelaySettings()
                 PortForwardSection(
                     rules = portForwardRules,
                     sshEnabled = ui.sshEnabled,

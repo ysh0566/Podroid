@@ -1,0 +1,20 @@
+#!/sbin/openrc-run
+description="Podroid shared audio server"
+supervisor=supervise-daemon
+command=/usr/bin/pulseaudio
+command_args="-n --daemonize=no --disallow-exit --exit-idle-time=-1 --file=/etc/pulse/podroid-audio.pa"
+output_log=/var/log/podroid-audio.log
+error_log=/var/log/podroid-audio.log
+respawn_delay=2
+respawn_max=5
+respawn_period=60
+export PULSE_RUNTIME_PATH=/run/podroid-pulse/private
+export XDG_RUNTIME_DIR=/run/podroid-pulse/private
+depend() { need dbus; before podroid-x11; }
+start_pre() {
+    # Pulse enforces 0700 on its runtime; keep the shared authenticated socket outside it.
+    mkdir -p /run/podroid-pulse/private /root/.config/pulse
+    chmod 700 /root/.config/pulse
+    chmod 711 /run/podroid-pulse
+    chmod 700 /run/podroid-pulse/private
+}

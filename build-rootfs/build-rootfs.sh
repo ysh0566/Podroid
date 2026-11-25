@@ -46,6 +46,8 @@ apk -X "https://dl-cdn.alpinelinux.org/alpine/v${ALPINE_BRANCH}/main" \
     tigervnc \
     pulseaudio \
     pulseaudio-utils \
+    nodejs \
+    dbus dbus-openrc \
     font-misc-misc \
     font-cursor-misc \
     ttf-dejavu
@@ -87,7 +89,7 @@ rm -rf "$ROOTFS/usr/share/man" "$ROOTFS/usr/share/doc" \
        "$ROOTFS/usr/share/locale" "$ROOTFS/usr/share/info"
 
 # Remove the stock pulseaudio OpenRC service. Podroid starts pulseaudio
-# directly from podroid-x11 (start-stop-daemon), never as a service; left in
+# via its own podroid-audio service; left in
 # place its depend() pulls in a non-existent "udev" service, so OpenRC logs
 # "Service 'pulseaudio' needs non existent service 'udev'" on every boot.
 rm -f "$ROOTFS/etc/init.d/pulseaudio"
@@ -97,6 +99,15 @@ mkdir -p "$ROOTFS/var/lib/containers/storage" \
          "$ROOTFS/run/containers/storage" \
          "$ROOTFS/run/libpod" \
          "$ROOTFS/run/crun"
+
+# Integrated host services need guest-side proxy and PCM transport support.
+mkdir -p "$ROOTFS/usr/local/share/podroid-host-services" "$ROOTFS/etc/profile.d"
+cp /work/files/usr/local/share/podroid-host-services/* "$ROOTFS/usr/local/share/podroid-host-services/"
+cp /work/files/etc/profile.d/podroid-host-proxy.sh "$ROOTFS/etc/profile.d/"
+cp /work/files/etc/init.d/podroid-proxy "$ROOTFS/etc/init.d/"
+cp /work/files/etc/init.d/podroid-audio /work/files/etc/init.d/podroid-audio-transport "$ROOTFS/etc/init.d/"
+mkdir -p "$ROOTFS/etc/pulse"
+cp /work/files/etc/pulse/podroid-audio.pa "$ROOTFS/etc/pulse/"
 
 # Copy custom service files into the rootfs
 cp /work/files/etc/init.d/podroid-bootstrap "$ROOTFS/etc/init.d/"
@@ -203,7 +214,7 @@ mkdir -p "$ROOTFS/etc/runlevels/default" "$ROOTFS/etc/runlevels/boot"
 # Guard each link: a dangling symlink (e.g. dnsmasq.lxcbr0, which lxc-bridge
 # may ship only as dnsmasq config and not an init script) makes OpenRC log
 # an error every boot and stalls podroid-ready's `after *` on a phantom.
-for svc in podroid-migrate podroid-bootstrap podroid-network podroid-resize dropbear docker lxc dnsmasq.lxcbr0 podroid-x11 podroid-vsock podroid-downloads podroid-hostd podroid-ready; do
+for svc in podroid-migrate podroid-bootstrap podroid-network podroid-proxy podroid-resize dropbear docker lxc dnsmasq.lxcbr0 podroid-audio podroid-audio-transport podroid-x11 podroid-vsock podroid-downloads podroid-hostd podroid-ready; do
     if [ -e "$ROOTFS/etc/init.d/$svc" ]; then
         ln -sf "/etc/init.d/$svc" "$ROOTFS/etc/runlevels/default/$svc"
     else

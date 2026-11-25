@@ -308,7 +308,7 @@ class UmlEngine @Inject constructor(
                     probe = false,
                 ),
             )
-            Log.d(TAG, "Launching UML with ${cmd.argv.size} args: ${cmd.argv}")
+            Log.d(TAG, "Launching UML with ${cmd.argv.size} args: ${com.excp.podroid.hostservices.redactHostServiceSecrets(cmd.argv.toString())}")
 
             val pb = ProcessBuilder(cmd.argv).directory(filesDir)
             pb.environment().putAll(cmd.env)

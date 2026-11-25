@@ -318,6 +318,7 @@ fun X11Screen(
                         }
                     },
                     actions = {
+                        com.excp.podroid.ui.components.hostservices.MicrophoneButton()
                         IconButton(onClick = { fullscreen = true }) {
                             Icon(Icons.Default.Fullscreen, contentDescription = stringResource(R.string.fullscreen))
                         }

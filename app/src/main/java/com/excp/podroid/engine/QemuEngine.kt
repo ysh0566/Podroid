@@ -308,7 +308,7 @@ class QemuEngine @Inject constructor(
 
         try {
             val cmd = buildCommand(qemuExe, portForwards, config)
-            Log.d(TAG, "Launching QEMU with ${cmd.size} args: $cmd")
+            Log.d(TAG, "Launching QEMU with ${cmd.size} args: ${com.excp.podroid.hostservices.redactHostServiceSecrets(cmd.toString())}")
 
             val nativeDir = context.applicationInfo.nativeLibraryDir
             val pb = ProcessBuilder(cmd).directory(context.filesDir)

@@ -1,0 +1,5 @@
+load-module module-null-sink sink_name=podroid_sink rate=44100 channels=2 format=s16le sink_properties=device.description=Tablet_Speakers
+load-module module-native-protocol-unix socket=/run/podroid-pulse/native auth-cookie=/root/.config/pulse/cookie
+load-module module-pipe-source source_name=podroid_mic file=/run/podroid-pulse/microphone.pcm rate=48000 channels=1 format=s16le source_properties=device.description=Tablet_Microphone
+set-default-sink podroid_sink
+set-default-source podroid_mic
