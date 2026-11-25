@@ -2,14 +2,23 @@ package com.excp.podroid.ui.components.hostservices
 
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -19,9 +28,9 @@ import com.excp.podroid.data.repository.SettingsRepository
 import com.excp.podroid.engine.VmEngine
 import com.excp.podroid.engine.VmState
 import com.excp.podroid.hostservices.*
-import com.excp.podroid.ui.components.PodroidSectionLabel
 import com.excp.podroid.ui.components.PodroidListRow
 import com.excp.podroid.ui.components.PodroidSwitch
+import com.excp.podroid.ui.theme.PodroidTokens
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -69,51 +78,134 @@ fun NetworkRelayStatus(viewModel: HostServicesViewModel = hiltViewModel()) {
     }
     Column {
         Text(stringResource(label))
-        Text(stringResource(R.string.relay_stats, state.connections, state.limit, state.bytes / 1048576.0, state.rejected))
+        Text(
+            text = stringResource(R.string.relay_stats, state.connections, state.limit, state.bytes / 1048576.0, state.rejected),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
 @Composable
 fun NetworkRelaySettings(viewModel: HostServicesViewModel = hiltViewModel()) {
     val config by viewModel.config.collectAsStateWithLifecycle()
+    var showDialog by rememberSaveable { mutableStateOf(false) }
+    PodroidListRow(
+        label = stringResource(R.string.relay_title),
+        value = stringResource(if (config.enabled) R.string.on else R.string.off),
+        trailing = "›",
+        onClick = { showDialog = true },
+    )
+    if (showDialog) {
+        NetworkRelayDialog(config, viewModel, onDismiss = { showDialog = false })
+    }
+}
+
+@Composable
+private fun NetworkRelayDialog(
+    config: RelayConfig,
+    viewModel: HostServicesViewModel,
+    onDismiss: () -> Unit,
+) {
     val vm by viewModel.vmState.collectAsStateWithLifecycle()
     val probe by viewModel.probe.collectAsStateWithLifecycle()
-    val editable = vm !is VmState.Running && vm !is VmState.Starting && probe != ProxyProbeResult.TESTING
-    var host by remember(config.host) { mutableStateOf(config.host) }
-    var port by remember(config.port) { mutableStateOf(config.port.toString()) }
-    var noProxy by remember(config.noProxy) { mutableStateOf(config.noProxy) }
+    val vmStopped = vm !is VmState.Running && vm !is VmState.Starting
+    val editable = vmStopped && probe != ProxyProbeResult.TESTING
+    // Keep edits across rotation, but discard unsaved fields when the dialog closes.
+    var host by rememberSaveable(config.host) { mutableStateOf(config.host) }
+    var port by rememberSaveable(config.port) { mutableStateOf(config.port.toString()) }
+    var noProxy by rememberSaveable(config.noProxy) { mutableStateOf(config.noProxy) }
     val candidate = RelayConfig(config.enabled, host.trim(), port.toIntOrNull() ?: 0, noProxy)
     LaunchedEffect(candidate) { viewModel.resetProbe() }
-    PodroidSectionLabel(stringResource(R.string.relay_title))
-    PodroidListRow(label = stringResource(R.string.proxy_use), rightSlot = {
-        PodroidSwitch(checked = config.enabled, enabled = editable,
-            onCheckedChange = { viewModel.save(config.copy(enabled = it)) })
-    })
-    Text(stringResource(R.string.relay_description))
-    if (config.enabled) {
-        PodroidListRow(label = stringResource(R.string.proxy_type), value = stringResource(R.string.proxy_http))
-        OutlinedTextField(value = host, onValueChange = { host = it }, enabled = editable,
-            label = { Text(stringResource(R.string.relay_proxy_host)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = port, onValueChange = { port = it }, enabled = editable,
-            label = { Text(stringResource(R.string.relay_proxy_port)) }, singleLine = true, modifier = Modifier.fillMaxWidth())
-        OutlinedTextField(value = noProxy, onValueChange = { noProxy = it }, enabled = editable,
-            label = { Text(stringResource(R.string.proxy_bypass)) }, modifier = Modifier.fillMaxWidth())
-        Text(stringResource(R.string.proxy_bypass_hint))
-        TextButton(enabled = editable && candidate.isValid() && candidate != config,
-            onClick = { viewModel.save(candidate) }) { Text(stringResource(R.string.relay_save)) }
-        TextButton(enabled = candidate.isValid() && probe != ProxyProbeResult.TESTING,
-            onClick = { viewModel.testProxy(candidate) }) { Text(stringResource(R.string.proxy_test)) }
-        Text(stringResource(R.string.proxy_test_hint))
-        val probeLabel = when (probe) {
-            ProxyProbeResult.IDLE -> null
-            ProxyProbeResult.TESTING -> R.string.proxy_testing
-            ProxyProbeResult.UNREACHABLE -> R.string.proxy_unreachable
-            ProxyProbeResult.HTTPS_FAILED -> R.string.proxy_https_failed
-            ProxyProbeResult.SUCCESS -> R.string.proxy_success
-        }
-        probeLabel?.let { Text(stringResource(it)) }
-        NetworkRelayStatus(viewModel)
-    }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.relay_title)) },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(PodroidTokens.Spacing.SM),
+            ) {
+                PodroidListRow(
+                    label = stringResource(R.string.proxy_use),
+                    onClick = { if (editable) viewModel.save(config.copy(enabled = !config.enabled)) },
+                    rightSlot = {
+                        PodroidSwitch(
+                            checked = config.enabled,
+                            enabled = editable,
+                            onCheckedChange = { viewModel.save(config.copy(enabled = it)) },
+                        )
+                    },
+                )
+                ProxyHint(stringResource(R.string.relay_description))
+                if (!vmStopped) {
+                    ProxyHint(stringResource(R.string.stop_vm_to_change))
+                }
+                if (config.enabled) {
+                    PodroidListRow(
+                        label = stringResource(R.string.proxy_type),
+                        value = stringResource(R.string.proxy_http),
+                    )
+                    OutlinedTextField(
+                        value = host,
+                        onValueChange = { host = it },
+                        enabled = editable,
+                        label = { Text(stringResource(R.string.relay_proxy_host)) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = port,
+                        onValueChange = { port = it },
+                        enabled = editable,
+                        label = { Text(stringResource(R.string.relay_proxy_port)) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    OutlinedTextField(
+                        value = noProxy,
+                        onValueChange = { noProxy = it },
+                        enabled = editable,
+                        label = { Text(stringResource(R.string.proxy_bypass)) },
+                        supportingText = { Text(stringResource(R.string.proxy_bypass_hint)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(PodroidTokens.Spacing.SM)) {
+                        TextButton(
+                            enabled = editable && candidate.isValid() && candidate != config,
+                            onClick = { viewModel.save(candidate) },
+                        ) { Text(stringResource(R.string.relay_save)) }
+                        TextButton(
+                            enabled = candidate.isValid() && probe != ProxyProbeResult.TESTING,
+                            onClick = { viewModel.testProxy(candidate) },
+                        ) { Text(stringResource(R.string.proxy_test)) }
+                    }
+                    ProxyHint(stringResource(R.string.proxy_test_hint))
+                    val probeLabel = when (probe) {
+                        ProxyProbeResult.IDLE -> null
+                        ProxyProbeResult.TESTING -> R.string.proxy_testing
+                        ProxyProbeResult.UNREACHABLE -> R.string.proxy_unreachable
+                        ProxyProbeResult.HTTPS_FAILED -> R.string.proxy_https_failed
+                        ProxyProbeResult.SUCCESS -> R.string.proxy_success
+                    }
+                    probeLabel?.let { Text(stringResource(it)) }
+                    NetworkRelayStatus(viewModel)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+        },
+    )
+}
+
+@Composable
+private fun ProxyHint(text: String) {
+    Text(
+        text = text,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
 }
 
 @Composable

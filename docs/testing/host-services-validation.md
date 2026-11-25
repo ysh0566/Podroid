@@ -4,24 +4,23 @@ Date: 2026-11-25. Branch: `feature/integrated-host-services`.
 
 ## Isolation and current device status
 
-The intended device target is a separate `com.excp.podroid.debug` installation,
-labelled **Podroid 集成测试**, with a new 4 GiB disk, 1024 MiB RAM and two vCPUs.
-Neither the production package `com.ysh0566.podroid` nor the standalone helper
-`dev.podroid.bridge` is an installation or data-migration target.
+The independent `com.excp.podroid.debug` App, labelled **Podroid 集成测试**,
+was installed with a new 4 GiB disk, 1024 MiB RAM and two vCPUs. Shared Downloads
+access and autostart were disabled. Neither production `com.ysh0566.podroid`
+nor standalone helper `dev.podroid.bridge` was replaced or migrated.
 
-The user has authorized temporarily stopping the production VM after saving
-work, followed by restoring it when testing ends. At the current checkpoint,
-ADB has reconnected, but Android rejected the independent APK installation.
-No test package was installed. A standalone Android loopback stress process
-was tested during an authorized brief VM stop; production was then restored
-to AVF Ready. The user subsequently deferred installation. App UI and guest
-integration validation remain incomplete; preparing this PR does not authorize
-installing an APK or stopping the production VM.
+Production was temporarily stopped with the user's authorization. Only one VM
+ran at a time. After validation, the test VM was stopped normally, its microphone
+service was confirmed absent, and the test App was force-stopped. It remains
+installed with AVF selected. Production was restored to
+`vm=running backend=avf selection=AVF stage=Ready`. The test SSH forward and
+on-device UI dump were removed.
 
-The read-only baseline showed Android 17 on an arm64 Xiaomi M367FC, production
-Podroid version code 34 / 1.3.0-debug running AVF, and helper 1.1.1 (code 4).
-Production package update times were 2026-11-25 01:24:36 and 01:28:58,
-respectively; the production disk was 137438953472 bytes.
+The device is an arm64 Xiaomi M367FC running Android 17. Production remains
+version code 34 / 1.3.0-debug and the helper remains 1.1.1 (code 4). Their package
+update times still match the baseline: 2026-11-25 01:24:36 and 01:28:58,
+respectively. The production disk remains 137438953472 bytes. These are metadata
+and lifecycle checks, not a byte-for-byte comparison of a running VM disk.
 
 ## Completed local checks
 
@@ -59,22 +58,54 @@ docker run --rm --platform linux/arm64 \
 The harness creates its own disposable `/test-root`, substitutes a loopback
 route for synthetic peers, and changes no files in either read-only mount.
 
-## Required hardware checks
+## Isolated hardware validation
 
-- AVF and QEMU boot to Ready using only the test disk; check Docker, login-shell
-  proxy variables, HTTPS through port 18888, upstream loss/recovery and opt-out.
-- Verify the settings UI and home status against actual relay state.
-- Exercise microphone permission denial/grant, toolbar and notification Stop,
-  authenticated guest PCM, and absence of recording on VM restart/process death.
-- Confirm playback still works, and that stopping the VM releases relay and
-  microphone listeners.
-- Stop/uninstall only the test package, restore the production VM, and compare
-  production/helper versions and package update times with the baseline.
+| Check | AVF | QEMU |
+|---|---|---|
+| Ready using the independent 4 GiB disk | Passed | Passed |
+| Docker, proxy, audio, audio transport and X11 services started | Passed | Passed |
+| Login proxy and bypass variables follow the backend gateway | Passed | Passed |
+| HTTPS through the integrated proxy | HTTP 200 | HTTP 200; 128 KiB download verified |
+| Real microphone PCM reaches the guest | 576960 samples in about 12 seconds; 510137 nonzero | 287040 samples in about 6 seconds; 266429 nonzero |
+| Stopping the VM releases the microphone service | Passed | Passed |
+| Audible guest playback | User confirmed normal sound after a 3-second tone | Not separately confirmed |
 
-AVF, QEMU and UML guest integration is not yet verified for this change;
-the NIO transport itself has passed standalone Android ART testing. Existing
-user overlay scripts can shadow updated audio/proxy files; production overlay
-reconciliation is deliberately outside this isolated test and has not run.
+Microphone samples were counted in memory; no audio recording files were saved.
+On AVF, the toolbar Stop action also removed the microphone service and its
+listener refused new connections. The Android-side settings connection test
+reported HTTPS success from the actual App UID.
+
+The App relay accepted 128 simultaneous idle connections from the AVF guest,
+rejected 16 excess connections and preserved the existing sessions. Home showed
+`128 / 128` and 16 rejected connections. After all sessions closed, HTTPS still
+returned 200. This capacity check used local proxy sockets, not public-site load.
+It complements the standalone byte-integrity stress measurements below.
+
+Disabling the proxy through Settings and restarting the isolated AVF VM removed
+managed login/Docker proxy configuration. Proxy and microphone ports refused
+connections. The proxy was re-enabled before QEMU testing; its gateway changed
+from `10.199.82.169` on AVF to `10.0.2.2` on QEMU.
+
+UML did not pass its compatibility probe. Its console reported
+`Kernel panic - not syncing: Attempted to kill init! exitcode=0x00000000`.
+The control API reported `uml=failed:Kernel_panic`, then the App fell back to
+AVF Ready. This is fallback evidence, not successful UML integration validation.
+The cause has not been isolated against a baseline build.
+
+### Remaining hardware checks
+
+- UML guest integration on a device/build where the compatibility probe passes.
+- Microphone permission denial: the attempted UI interaction did not establish
+  a reliable denied state, so only the granted recording path is confirmed.
+- Notification Stop: the device grouped the notifications without exposing a
+  unique Stop action; toolbar Stop and normal VM-stop cleanup passed instead.
+- App/guest upstream loss and recovery, and absence of recording after unexpected
+  process death. Standalone transport checks do not replace these lifecycle tests.
+- QEMU playback needs a separate audible confirmation.
+
+Existing user overlay scripts can shadow updated audio/proxy files. Production
+overlay reconciliation is outside this isolated test and has not run. The PR
+still has validation gaps and the existing lint errors; it is not fully verified.
 
 ## NIO proxy update
 
@@ -83,6 +114,15 @@ proxy switch, HTTP protocol explanation, Android upstream host/port, bypass
 list, Save, and an explicit Android-side HTTPS connection test. Current / limit,
 transferred bytes and rejected connections are shown for the current VM session.
 The shipped limit remains **128**; 512 is used only as a stress-harness parameter.
+
+After device validation, the settings entry was reduced to one standard list row
+with an on/off value. Tapping it opens a scrollable configuration dialog. Proxy
+and microphone labels were shortened in both languages, with secondary help
+using the existing small-text style. `:app:compileDebugKotlin` and
+`:app:processDebugResources` passed; XML parsing, resource keys and formatting
+arguments were checked in both translations. This final layout change has not
+been installed or visually verified on the tablet. Before publishing the update,
+`:app:testDebugUnitTest` was run again: all 494 tests passed without failures or skips.
 
 The transport uses one selector thread, 16 KiB per direction, a three-second
 upstream-connect timeout, bounded accept batches and read backpressure. Tests
@@ -123,14 +163,6 @@ java -Xmx256m -cp /tmp/podroid-relay-classes \
   com.excp.podroid.hostservices.RelayStress 512 8
 ```
 
-At the latest device checkpoint, USB reconnected but Android rejected the
-independent APK installation with `INSTALL_FAILED_USER_RESTRICTED`. The
-production package/data have not been replaced; further installation was
-deferred at the user's request.
-The production VM was briefly stopped for standalone stress and restored, as
-documented below.
-
-
 ### Android transport stress and environment restoration
 
 On the connected arm64 Android 17 tablet, the same `TcpRelay` class and standalone
@@ -148,8 +180,8 @@ user filesystem or VM disk was used by the harness.
 
 These measurements validate Android NIO/ART behavior in an isolated shell
 process, **not** the App UID's networking permissions, AVF/SLIRP integration,
-proxy UI or an actual Internet proxy. Those checks still require the independent
-APK installation, which was rejected by Android and later deferred by the user.
+proxy UI or an actual Internet proxy. The later isolated hardware checks above
+cover the App UID, AVF/QEMU integration and proxy UI separately.
 
 The authorized VM stop and restoration were wrapped in `try/finally`. After the
 run, production `com.ysh0566.podroid` reported `vm=running backend=avf stage=Ready`.
@@ -173,5 +205,6 @@ After rebasing onto `main` at `6d10ae2`, the following checks were repeated:
 - All 29 new user-facing strings have both English and Chinese translations.
 
 No APK was installed, no real microphone was captured, and no tablet app or VM
-was stopped during PR preparation. The hardware gaps and existing lint errors
-above remain open; the PR is a draft pending App and backend validation.
+was stopped during the earlier PR preparation phase. Subsequent authorized
+hardware validation is recorded above. The remaining hardware checks and
+existing lint errors remain open.
