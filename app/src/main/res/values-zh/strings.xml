@@ -432,4 +432,6 @@
     <string name="proxy_unreachable">连接失败，请检查服务器和端口。</string>
     <string name="proxy_https_failed">HTTPS 测试失败，请检查代理和网络。</string>
     <string name="proxy_success">HTTPS 连接正常。</string>
+    <string name="proxy_connection_limit">连接上限</string>
+    <string name="proxy_connection_limit_hint">资源不足时会降低实际上限。</string>
 </resources>

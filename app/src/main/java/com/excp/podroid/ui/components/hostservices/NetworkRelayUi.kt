@@ -3,6 +3,7 @@ package com.excp.podroid.ui.components.hostservices
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.MicOff
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,6 +11,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -78,7 +81,7 @@ fun NetworkRelayStatus(viewModel: HostServicesViewModel = hiltViewModel()) {
     }
     Column {
         Text(stringResource(label))
-        Text(
+        if (state.limit > 0) Text(
             text = stringResource(R.string.relay_stats, state.connections, state.limit, state.bytes / 1048576.0, state.rejected),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -115,8 +118,11 @@ private fun NetworkRelayDialog(
     var host by rememberSaveable(config.host) { mutableStateOf(config.host) }
     var port by rememberSaveable(config.port) { mutableStateOf(config.port.toString()) }
     var noProxy by rememberSaveable(config.noProxy) { mutableStateOf(config.noProxy) }
-    val candidate = RelayConfig(config.enabled, host.trim(), port.toIntOrNull() ?: 0, noProxy)
+    var connectionLimit by rememberSaveable(config.connectionLimit) { mutableStateOf(config.connectionLimit) }
+    var showLimits by remember { mutableStateOf(false) }
+    val candidate = RelayConfig(config.enabled, host.trim(), port.toIntOrNull() ?: 0, noProxy, connectionLimit)
     LaunchedEffect(candidate) { viewModel.resetProbe() }
+    LaunchedEffect(editable) { if (!editable) showLimits = false }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.relay_title)) },
@@ -145,6 +151,28 @@ private fun NetworkRelayDialog(
                         label = stringResource(R.string.proxy_type),
                         value = stringResource(R.string.proxy_http),
                     )
+                    Box {
+                        PodroidListRow(
+                            label = stringResource(R.string.proxy_connection_limit),
+                            value = if (connectionLimit == AUTO_RELAY_CONNECTIONS) {
+                                stringResource(R.string.auto)
+                            } else connectionLimit.toString(),
+                            trailing = "›",
+                            onClick = if (editable) ({ showLimits = true }) else null,
+                        )
+                        DropdownMenu(expanded = showLimits, onDismissRequest = { showLimits = false }) {
+                            RELAY_CONNECTION_OPTIONS.forEach { limit ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(if (limit == AUTO_RELAY_CONNECTIONS) stringResource(R.string.auto) else limit.toString())
+                                    },
+                                    enabled = editable,
+                                    onClick = { connectionLimit = limit; showLimits = false },
+                                )
+                            }
+                        }
+                    }
+                    ProxyHint(stringResource(R.string.proxy_connection_limit_hint))
                     OutlinedTextField(
                         value = host,
                         onValueChange = { host = it },

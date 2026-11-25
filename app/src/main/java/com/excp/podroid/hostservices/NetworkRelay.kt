@@ -18,7 +18,7 @@ data class RelayState(
     val phase: RelayPhase = RelayPhase.OFF,
     val connections: Int = 0,
     val bytes: Long = 0,
-    val limit: Int = TcpRelay.CONNECTION_LIMIT,
+    val limit: Int = 0,
     val rejected: Long = 0,
 )
 
@@ -46,16 +46,18 @@ class NetworkRelay @Inject constructor() {
         var destination: InetSocketAddress? = null
         var retiredBytes = 0L
         var retiredRejected = 0L
+        var effectiveLimit = 0
         // Called under lock. Counters span listener rebinds within this VM session.
         fun retire() {
             relay?.let { it.close(); retiredBytes += it.bytes(); retiredRejected += it.rejectedConnections() }
             relay = null
             binding = null
             destination = null
+            effectiveLimit = 0
         }
         fun publish(phase: RelayPhase) {
             mutableState.value = RelayState(phase, relay?.connections() ?: 0,
-                retiredBytes + (relay?.bytes() ?: 0), TcpRelay.CONNECTION_LIMIT,
+                retiredBytes + (relay?.bytes() ?: 0), effectiveLimit,
                 retiredRejected + (relay?.rejectedConnections() ?: 0))
         }
         try {
@@ -78,7 +80,10 @@ class NetworkRelay @Inject constructor() {
                             if (binding != network || destination != upstream || relay == null || relay!!.failure().isNotEmpty()) {
                                 retire()
                                 phase = RelayPhase.FAILED
-                                relay = TcpRelay(network.address, network.prefix, RELAY_PORT, upstream, TcpRelay.CONNECTION_LIMIT)
+                                // Sample after retiring the old sockets. Keep this cap stable until rebind.
+                                effectiveLimit = relayConnectionLimit(config.connectionLimit, readRelayResources())
+                                check(effectiveLimit > 0) { "No relay resource budget" }
+                                relay = TcpRelay(network.address, network.prefix, RELAY_PORT, upstream, effectiveLimit)
                                 binding = network
                                 destination = upstream
                             }

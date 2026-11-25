@@ -48,6 +48,7 @@ class SettingsRepository @Inject constructor(
         val KEY_NETWORK_PROXY_HOST = stringPreferencesKey("network_proxy_host")
         val KEY_NETWORK_PROXY_PORT = intPreferencesKey("network_proxy_port")
         val KEY_NETWORK_NO_PROXY = stringPreferencesKey("network_no_proxy")
+        val KEY_NETWORK_CONNECTION_LIMIT = intPreferencesKey("network_connection_limit")
         val KEY_DARK_THEME             = booleanPreferencesKey("dark_theme")
         val KEY_VM_RAM                 = intPreferencesKey("vm_ram_mb")
         val KEY_VM_CPUS                = intPreferencesKey("vm_cpus")
@@ -159,6 +160,7 @@ class SettingsRepository @Inject constructor(
             prefs[KEY_NETWORK_PROXY_HOST] ?: "127.0.0.1",
             prefs[KEY_NETWORK_PROXY_PORT] ?: 8686,
             prefs[KEY_NETWORK_NO_PROXY] ?: com.excp.podroid.hostservices.DEFAULT_NO_PROXY,
+            com.excp.podroid.hostservices.savedRelayConnectionLimit(prefs[KEY_NETWORK_CONNECTION_LIMIT]),
         ) }
 
     suspend fun setRelayConfig(value: com.excp.podroid.hostservices.RelayConfig) {
@@ -168,6 +170,7 @@ class SettingsRepository @Inject constructor(
             it[KEY_NETWORK_PROXY_HOST] = value.host
             it[KEY_NETWORK_PROXY_PORT] = value.port
             it[KEY_NETWORK_NO_PROXY] = value.normalizedNoProxy()
+            it[KEY_NETWORK_CONNECTION_LIMIT] = value.connectionLimit
         }
     }
 
