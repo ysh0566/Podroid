@@ -1,0 +1,11 @@
+#!/sbin/openrc-run
+description="Configure the integrated Android proxy for this VM boot"
+depend() {
+    need podroid-network
+    before docker podroid-ready
+}
+start() {
+    ebegin "Configuring Android proxy"
+    /usr/bin/node /usr/local/share/podroid-host-services/proxy.js
+    eend $?
+}

@@ -122,7 +122,7 @@
     <string name="both">两者</string>
     <string name="enter_valid_ports">输入有效的端口号 (1-65535)</string>
     <string name="port_already_forwarded">端口 %1$d (%2$s) 已转发</string>
-    <string name="port_reserved">端口 %1$d 已保留给应用内桌面</string>
+    <string name="port_reserved">端口 %1$d 已保留给 Podroid 内置服务</string>
     <string name="port_forward_table_full">端口转发已达上限 %1$d 条，请先删除一条。</string>
     <string name="port_forward_partial_add">端口 %1$d：%2$s 未能添加，端口转发数量已达上限。</string>
     <string name="reset">重置</string>
@@ -402,4 +402,34 @@
     <string name="scroll_traditional">传统</string>
     <string name="scroll_natural_hint">双指向上滑动时，页面向下滚动。</string>
     <string name="scroll_traditional_hint">双指向上滑动时，页面向上滚动。</string>
+
+    <string name="relay_title">网络代理</string>
+    <string name="relay_description">为终端和 Docker 设置代理，下次启动生效。</string>
+    <string name="relay_proxy_host">服务器（本机）</string>
+    <string name="relay_proxy_port">端口</string>
+    <string name="relay_save">保存</string>
+    <string name="relay_off">代理：已停止</string>
+    <string name="relay_wait_network">代理：等待网络</string>
+    <string name="relay_wait_proxy">代理：连接失败，重试中</string>
+    <string name="relay_ready">代理：可连接</string>
+    <string name="relay_failed">代理：启动失败，重试中</string>
+    <string name="relay_stats">连接 %1$d / %2$d · %3$.1f MiB · 拒绝 %4$d</string>
+    <string name="mic_title">麦克风共享</string>
+    <string name="mic_enabled">正在共享麦克风</string>
+    <string name="mic_notification">正在向当前虚拟机共享声音。</string>
+    <string name="mic_start">共享麦克风</string>
+    <string name="mic_stop">停止共享</string>
+    <string name="mic_failed">麦克风不可用，请检查权限后重试。</string>
+    <string name="mic_permission">请允许麦克风权限。</string>
+    <string name="proxy_use">使用代理</string>
+    <string name="proxy_type">类型</string>
+    <string name="proxy_http">HTTP</string>
+    <string name="proxy_bypass">绕过地址</string>
+    <string name="proxy_bypass_hint">域名或 IP，用逗号分隔。</string>
+    <string name="proxy_test">测试连接</string>
+    <string name="proxy_test_hint">仅测试本机代理连接，不保存设置。</string>
+    <string name="proxy_testing">测试中…</string>
+    <string name="proxy_unreachable">连接失败，请检查服务器和端口。</string>
+    <string name="proxy_https_failed">HTTPS 测试失败，请检查代理和网络。</string>
+    <string name="proxy_success">HTTPS 连接正常。</string>
 </resources>

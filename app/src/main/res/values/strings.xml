@@ -122,7 +122,7 @@
     <string name="both">Both</string>
     <string name="enter_valid_ports">Enter valid port numbers (1–65535)</string>
     <string name="port_already_forwarded">Port %1$d (%2$s) is already forwarded</string>
-    <string name="port_reserved">Port %1$d is reserved for the in-app desktop</string>
+    <string name="port_reserved">Port %1$d is reserved for built-in Podroid services</string>
     <string name="port_forward_table_full">Limit of %1$d port forwards reached. Remove one first.</string>
     <string name="port_forward_partial_add">Port %1$d: %2$s could not be added, the port forward limit was reached.</string>
     <string name="reset">Reset</string>
@@ -401,4 +401,34 @@
     <string name="scroll_traditional">Traditional</string>
     <string name="scroll_natural_hint">Swipe up with two fingers to scroll down the page.</string>
     <string name="scroll_traditional_hint">Swipe up with two fingers to scroll up the page.</string>
+
+    <string name="relay_title">Network proxy</string>
+    <string name="relay_description">Set the proxy for terminals and Docker. Applies on next VM start.</string>
+    <string name="relay_proxy_host">Server (on Android)</string>
+    <string name="relay_proxy_port">Port</string>
+    <string name="relay_save">Save</string>
+    <string name="relay_off">Proxy: stopped</string>
+    <string name="relay_wait_network">Proxy: waiting for network</string>
+    <string name="relay_wait_proxy">Proxy: unreachable, retrying</string>
+    <string name="relay_ready">Proxy: reachable</string>
+    <string name="relay_failed">Proxy: failed to start, retrying</string>
+    <string name="relay_stats">Connections %1$d / %2$d · %3$.1f MiB · Rejected %4$d</string>
+    <string name="mic_title">Microphone sharing</string>
+    <string name="mic_enabled">Sharing microphone</string>
+    <string name="mic_notification">Sharing audio with the current VM.</string>
+    <string name="mic_start">Share microphone</string>
+    <string name="mic_stop">Stop sharing</string>
+    <string name="mic_failed">Microphone unavailable. Check permissions and retry.</string>
+    <string name="mic_permission">Allow microphone access to continue.</string>
+    <string name="proxy_use">Use proxy</string>
+    <string name="proxy_type">Type</string>
+    <string name="proxy_http">HTTP</string>
+    <string name="proxy_bypass">Bypass addresses</string>
+    <string name="proxy_bypass_hint">Domains or IPs, separated by commas.</string>
+    <string name="proxy_test">Test connection</string>
+    <string name="proxy_test_hint">Tests the proxy from Android without saving.</string>
+    <string name="proxy_testing">Testing…</string>
+    <string name="proxy_unreachable">Connection failed. Check the server and port.</string>
+    <string name="proxy_https_failed">HTTPS failed. Check the proxy and network.</string>
+    <string name="proxy_success">HTTPS connection OK.</string>
 </resources>

@@ -44,6 +44,10 @@ class SettingsRepository @Inject constructor(
 ) {
 
     companion object {
+        val KEY_NETWORK_RELAY_ENABLED = booleanPreferencesKey("network_relay_enabled")
+        val KEY_NETWORK_PROXY_HOST = stringPreferencesKey("network_proxy_host")
+        val KEY_NETWORK_PROXY_PORT = intPreferencesKey("network_proxy_port")
+        val KEY_NETWORK_NO_PROXY = stringPreferencesKey("network_no_proxy")
         val KEY_DARK_THEME             = booleanPreferencesKey("dark_theme")
         val KEY_VM_RAM                 = intPreferencesKey("vm_ram_mb")
         val KEY_VM_CPUS                = intPreferencesKey("vm_cpus")
@@ -145,6 +149,26 @@ class SettingsRepository @Inject constructor(
     }
     suspend fun setUmlDemotion(v: String?) = context.dataStore.edit {
         if (v == null) it.remove(KEY_UML_DEMOTION) else it[KEY_UML_DEMOTION] = v
+    }
+
+    // Read all fields from one transaction so a VM never boots with mixed revisions.
+    val relayConfig = context.dataStore.data
+        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        .map { prefs -> com.excp.podroid.hostservices.RelayConfig(
+            prefs[KEY_NETWORK_RELAY_ENABLED] ?: false,
+            prefs[KEY_NETWORK_PROXY_HOST] ?: "127.0.0.1",
+            prefs[KEY_NETWORK_PROXY_PORT] ?: 8686,
+            prefs[KEY_NETWORK_NO_PROXY] ?: com.excp.podroid.hostservices.DEFAULT_NO_PROXY,
+        ) }
+
+    suspend fun setRelayConfig(value: com.excp.podroid.hostservices.RelayConfig) {
+        require(value.isValid())
+        context.dataStore.edit {
+            it[KEY_NETWORK_RELAY_ENABLED] = value.enabled
+            it[KEY_NETWORK_PROXY_HOST] = value.host
+            it[KEY_NETWORK_PROXY_PORT] = value.port
+            it[KEY_NETWORK_NO_PROXY] = value.normalizedNoProxy()
+        }
     }
 
     val darkTheme            = pref(KEY_DARK_THEME, true)

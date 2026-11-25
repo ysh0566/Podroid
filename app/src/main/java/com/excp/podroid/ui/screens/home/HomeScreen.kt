@@ -236,6 +236,7 @@ fun HomeScreen(
                         if (showBackendFallbackBanner) {
                             AvfFallbackBanner()
                         }
+                        com.excp.podroid.ui.components.hostservices.NetworkRelayStatus()
                         HomeStatusBlock(
                             isStarting, isRunning, isStopping, vmState, bootStage, meta, uptimeLabel,
                             containerCount = containerCount,
@@ -292,6 +293,7 @@ fun HomeScreen(
                     if (showBackendFallbackBanner) {
                         AvfFallbackBanner()
                     }
+                    com.excp.podroid.ui.components.hostservices.NetworkRelayStatus()
                     HomeStatusBlock(
                         isStarting = isStarting,
                         isRunning = isRunning,

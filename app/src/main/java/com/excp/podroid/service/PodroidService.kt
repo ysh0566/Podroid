@@ -38,6 +38,8 @@ import com.excp.podroid.engine.usb.UsbPassthroughManager
 import com.excp.podroid.util.NetworkUtils
 import com.excp.podroid.x11.X11Constants
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import javax.inject.Inject
@@ -102,6 +104,8 @@ class PodroidService : Service() {
     @Inject lateinit var usbPassthroughManager: UsbPassthroughManager
     @Inject lateinit var notificationPoster: com.excp.podroid.engine.hostbridge.AndroidNotificationPoster
     @Inject lateinit var headlessModeManager: com.excp.podroid.engine.hostbridge.HeadlessModeManager
+    @Inject lateinit var microphoneSession: com.excp.podroid.hostservices.MicrophoneSession
+    @Inject lateinit var networkRelay: com.excp.podroid.hostservices.NetworkRelay
     private var hostRequestServer: com.excp.podroid.engine.hostbridge.HostRequestServer? = null
 
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
@@ -196,6 +200,9 @@ class PodroidService : Service() {
         notificationJob?.cancel()
         hostRequestServer?.stop()
         usbPassthroughManager.stop()
+        networkRelay.stop()
+        microphoneSession.clear()
+        com.excp.podroid.hostservices.MicrophoneService.stop(this)
         releaseWakeLock()
         serviceScope.cancel()
     }
@@ -402,6 +409,7 @@ class PodroidService : Service() {
                         )
                     }
 
+                    val relayConfig = settingsRepository.relayConfig.first()
                     val rules = portForwardRepository.getRulesSnapshot().toMutableList()
                     val sshEnabled = settingsRepository.getSshEnabledSnapshot()
 
@@ -431,7 +439,10 @@ class PodroidService : Service() {
                         storageSizeGb = settingsRepository.getStorageSizeGbSnapshot(),
                         storageAccessEnabled = settingsRepository.getStorageAccessEnabledSnapshot(),
                         qemuExtraArgs = settingsRepository.getQemuExtraArgsSnapshot(),
-                        kernelExtraCmdline = settingsRepository.getKernelExtraCmdlineSnapshot(),
+                        kernelExtraCmdline = com.excp.podroid.hostservices.hostServiceCmdline(
+                            settingsRepository.getKernelExtraCmdlineSnapshot(), relayConfig.enabled, microphoneSession.prepare(),
+                            relayConfig.noProxy,
+                        ),
                         verboseLogging = settingsRepository.getAvfVerboseLoggingSnapshot(),
                         x11Dpi = settingsRepository.getX11DpiSnapshot(),
                         usbPassthroughEnabled = settingsRepository.getUsbPassthroughEnabledSnapshot(),
@@ -440,6 +451,12 @@ class PodroidService : Service() {
                     serviceScope.launch { observeStateForHostBridge() }
                     if (config.usbPassthroughEnabled) {
                         serviceScope.launch { observeStateForUsb() }
+                    }
+                    serviceScope.launch {
+                        engine.state.collectLatest { state ->
+                            if (state is VmState.Running) networkRelay.run(relayConfig, engine.backendId)
+                            else networkRelay.stop()
+                        }
                     }
                     engine.start(rules, config)
                 } catch (c: CancellationException) {

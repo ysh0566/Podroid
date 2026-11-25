@@ -1,0 +1,11 @@
+#!/sbin/openrc-run
+description="Podroid PCM playback and opt-in microphone transport"
+supervisor=supervise-daemon
+command=/usr/bin/node
+command_args="/usr/local/share/podroid-host-services/audio.js"
+output_log=/var/log/podroid-audio-transport.log
+error_log=/var/log/podroid-audio-transport.log
+respawn_delay=2
+respawn_max=5
+respawn_period=60
+depend() { need podroid-audio; after podroid-network; before podroid-x11; }

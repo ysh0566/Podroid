@@ -407,7 +407,9 @@ class SettingsViewModel @Inject constructor(
             try {
                 val logFile = withContext(Dispatchers.IO) {
                     val file = File(context.filesDir, "log.txt")
-                    file.writeText(buildDiagnosticLog())
+                    // Verbose kernels may echo their command line into console.log.
+                    // Scrub the complete export too, not just Android launch logs.
+                    file.writeText(com.excp.podroid.hostservices.redactHostServiceSecrets(buildDiagnosticLog()))
                     file
                 }
 

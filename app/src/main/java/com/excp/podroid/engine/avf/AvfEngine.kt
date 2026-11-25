@@ -1081,7 +1081,7 @@ class AvfEngine @Inject constructor(
             config.kernelExtraCmdline).trim()
         AvfReflect.addParams(cb, resolvedCmdline)
         if (config.verboseLogging) {
-            Log.i(TAG, "verbose: resolved cmdline = $resolvedCmdline")
+            Log.i(TAG, "verbose: resolved cmdline = ${com.excp.podroid.hostservices.redactHostServiceSecrets(resolvedCmdline)}")
             Log.i(TAG, "verbose: ramMb=${config.ramMb} cpus=$effectiveCpus (requested ${config.cpus}) " +
                 "storageAccess=${config.storageAccessEnabled}")
         }

@@ -64,6 +64,14 @@ podroid-docs                          # serves docs/guide at http://127.0.0.1:99
 
 Setup, the backends, networking, the X11 viewer and troubleshooting all live in the **[documentation](https://extv.github.io/Podroid/guide/)**.
 
+## Integrated network and microphone
+
+In **Settings → Network → Network proxy**, enable **Use proxy** and set the Android HTTP proxy host/port (default `127.0.0.1:8686`). The protocol is HTTP, including HTTPS CONNECT. The bypass field accepts comma-separated domains/IPs; localhost and the VM gateway always bypass the proxy. Wildcard/subnet behavior depends on the client. **Test connection** checks the entered upstream from Android with an HTTPS HEAD request to `https://example.com/`; it neither saves settings nor proves guest application configuration. Stop the VM before changing the configuration. The next boot configures login shells, Docker daemon and root Docker CLI container defaults with the current guest gateway. Disabling the feature restores the prior managed Docker proxy unless the user changed it manually. This is an HTTP proxy relay, not a VPN client or transparent routing for every guest process.
+
+The relay starts and stops with the VM. Home and proxy settings show upstream reachability, current connections / the fixed **128-connection limit**, transferred bytes and rejected connections for the current VM session. Reachability does not guarantee Internet access. The NIO transport uses one selector thread and two fixed 16 KiB buffers per connection, applying backpressure to slow peers. Excess connections are closed without interrupting existing ones. Failed health probes do not disconnect established tunnels. AVF uses the device's `avf_tap_fixed` IPv4 interface; QEMU/UML use host loopback through SLIRP. Relay port `18888` and microphone port `18889` are separate from the standalone helper's ports.
+
+In the **X11 toolbar**, tap the microphone icon and grant microphone permission to share 48 kHz mono PCM with the guest's `Tablet_Microphone` PulseAudio source. Tap again or use the notification's Stop action to end capture. It is never automatically resumed after reboot or process death, and stopping the VM closes it. The guest authenticates with a per-boot token; audio is not recorded to files. An updated rootfs is required for both integrations. Custom guest services that shadow the image's audio/proxy scripts need manual reconciliation; no user overlay files are reset.
+
 ## Build
 
 ```sh
@@ -79,6 +87,7 @@ Per-component builds and toolchain details: [CONTRIBUTING.md](CONTRIBUTING.md).
 Contributions of every size are welcome: bug reports, kernel-config tweaks, new themes, UI polish, X11 input fixes, anything.
 
 - **Pull requests:** read [CONTRIBUTING.md](CONTRIBUTING.md) first. Keep changes scoped, run `./build-all.sh test` before pushing, and explain *why* in the PR description.
+- **Host service validation:** see the [network proxy and microphone test report](docs/testing/host-services-validation.md), including repeatable NIO stress tests.
 - **X11 input validation:** see the [device test report](docs/testing/x11-input-validation.md) for the isolated QEMU boot results, touchpad checks, and untested backends.
 - **Bug reports:** [open an issue](https://github.com/ExTV/Podroid/issues/new) with your device and Android version, a short repro, and the diagnostic log (**Settings → Export Diagnostic Log** in the app).
 
