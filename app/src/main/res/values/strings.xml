@@ -431,4 +431,6 @@
     <string name="proxy_unreachable">Connection failed. Check the server and port.</string>
     <string name="proxy_https_failed">HTTPS failed. Check the proxy and network.</string>
     <string name="proxy_success">HTTPS connection OK.</string>
+    <string name="proxy_connection_limit">Connection limit</string>
+    <string name="proxy_connection_limit_hint">Available resources may lower the limit.</string>
 </resources>

@@ -65,6 +65,7 @@ class DataStoreKeyContractTest {
         SettingsRepository.KEY_X11_DPI.name to "x11_dpi",
         SettingsRepository.KEY_LANGUAGE.name to "language",
         SettingsRepository.KEY_AUTOSTART_ON_BOOT.name to "autostart_on_boot",
+        SettingsRepository.KEY_NETWORK_CONNECTION_LIMIT.name to "network_connection_limit",
     )
 
     @Test

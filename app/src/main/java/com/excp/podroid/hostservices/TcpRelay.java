@@ -17,7 +17,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /** Binary-transparent TCP transport. Only the selector thread owns sessions and buffers. */
 public final class TcpRelay implements Closeable {
-    public static final int CONNECTION_LIMIT = 128;
+    // Default preference; each listener receives its resource-capped limit explicitly.
+    public static final int CONNECTION_LIMIT = 512;
     public static final int BUFFER_BYTES = 16384;
     private static final long CONNECT_TIMEOUT_NANOS = TimeUnit.SECONDS.toNanos(3);
     private final Selector selector;

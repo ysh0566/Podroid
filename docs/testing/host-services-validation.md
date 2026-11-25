@@ -113,7 +113,9 @@ The proxy UI is now **Settings → Network → Network proxy**. It includes the
 proxy switch, HTTP protocol explanation, Android upstream host/port, bypass
 list, Save, and an explicit Android-side HTTPS connection test. Current / limit,
 transferred bytes and rejected connections are shown for the current VM session.
-The shipped limit remains **128**; 512 is used only as a stress-harness parameter.
+The initial integrated build used a fixed **128** limit. The subsequent
+[configurable limit report](proxy-connection-limits.md) covers the new settings
+and default; the device measurements in this report used the original 128 cap.
 
 After device validation, the settings entry was reduced to one standard list row
 with an on/off value. Tapping it opens a scrollable configuration dialog. Proxy
@@ -158,7 +160,7 @@ javac -d /tmp/podroid-relay-classes \
   tools/tests/RelayStress.java
 java -Xmx256m -cp /tmp/podroid-relay-classes \
   com.excp.podroid.hostservices.RelayStress 128 20
-# Optional capacity test; does not alter the App's 128-connection limit:
+# Standalone capacity test; does not change saved App settings:
 java -Xmx256m -cp /tmp/podroid-relay-classes \
   com.excp.podroid.hostservices.RelayStress 512 8
 ```
