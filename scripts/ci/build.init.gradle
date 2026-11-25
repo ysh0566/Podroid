@@ -11,6 +11,11 @@ allprojects {
             if (appId) p.android.defaultConfig.applicationId = appId
             if (code) p.android.defaultConfig.versionCode = Integer.parseInt(code)
             if (name) p.android.defaultConfig.versionName = name
+            // The project declares a release signing config even without a key.
+            // Clear that incomplete config for explicitly unsigned CI builds.
+            if (!System.getenv('ORG_GRADLE_PROJECT_PODROID_RELEASE_STORE_FILE')) {
+                p.android.buildTypes.getByName('release').signingConfig = null
+            }
         }
     }
 }
